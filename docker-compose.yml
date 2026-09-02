@@ -1,0 +1,50 @@
+services:
+
+  # ---------------------------------------------------------------
+  # dev — ng serve con recarga en vivo. Es lo que usas mientras
+  # trabajas: editas en ./frontend y el navegador se refresca solo.
+  # ---------------------------------------------------------------
+  mural:
+    build:
+      context: .
+      dockerfile: docker/angular/Dockerfile
+      target: dev
+    container_name: mural_dev
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - mural_node_modules:/app/node_modules
+    ports:
+      - "${MURAL_PORT:-4200}:4200"
+    environment:
+      NG_CLI_ANALYTICS: "false"
+    # --poll: el bind mount desde el host no propaga eventos inotify,
+    # así que sin sondeo el recompilado en caliente no se entera de nada.
+    command: npm start -- --host 0.0.0.0 --port 4200 --poll 1000
+
+  # ---------------------------------------------------------------
+  # tv — el bundle compilado servido por nginx. Este es el que se
+  # apunta desde el televisor: sin sourcemaps, sin websocket de
+  # recarga y con los assets cacheados.
+  #
+  # Vive bajo un perfil para que `docker compose up` no lo levante
+  # por accidente durante el desarrollo. Se enciende con `make tv`.
+  # ---------------------------------------------------------------
+  tv:
+    build:
+      context: .
+      dockerfile: docker/angular/Dockerfile
+      target: prod
+    container_name: mural_tv
+    profiles: ["tv"]
+    ports:
+      - "${TV_PORT:-8080}:80"
+    # El contenido se monta desde el host, no se hornea en la imagen:
+    # cambiar una foto o un texto del mural.json no debe obligar a
+    # recompilar Angular ni a reconstruir la imagen.
+    volumes:
+      - ./frontend/public/contenido:/usr/share/nginx/html/contenido:ro
+    restart: unless-stopped
+
+volumes:
+  mural_node_modules:

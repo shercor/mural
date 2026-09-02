@@ -1,0 +1,110 @@
+<main class="mural zona-segura">
+  <!-- Fondo. Decorativo puro, así que se esconde del lector de pantalla. -->
+  <div class="oleaje" aria-hidden="true">
+    <span class="corriente corriente-1"></span>
+    <span class="corriente corriente-2"></span>
+  </div>
+
+  @if (mural(); as m) {
+    <div class="lienzo">
+      <header class="zona-encabezado">
+        <p class="rotulo">{{ m.campana }}</p>
+      </header>
+
+      <!-- ---------------------------------------------------------------
+           La protagonista. Ocupa una columna entera y va primero en el
+           orden del documento: es lo que tiene que ver alguien que pasa
+           caminando y solo mira dos segundos.
+           --------------------------------------------------------------- -->
+      <figure class="zona-retrato marco-foto">
+        <img
+          class="retrato"
+          [src]="m.protagonista.foto"
+          [alt]="'Retrato de ' + m.protagonista.nombre + ' ' + m.protagonista.apellidos"
+        />
+        <span class="velo" aria-hidden="true"></span>
+      </figure>
+
+      <section class="zona-identidad">
+        <div class="fila-piezas">
+          <span class="pieza pieza-pais">
+            @if (m.protagonista.bandera) {
+              <span class="bandera" aria-hidden="true">{{ m.protagonista.bandera }}</span>
+            }
+            <span class="pais">{{ m.protagonista.pais }}</span>
+          </span>
+        </div>
+
+        <h1 class="nombre">
+          <span class="nombre-pila">{{ m.protagonista.nombre }}</span>
+          <span class="nombre-apellidos">{{ m.protagonista.apellidos }}</span>
+        </h1>
+
+        <p class="titular">{{ m.protagonista.titular }}</p>
+        <p class="descripcion">{{ m.protagonista.descripcion }}</p>
+
+        <!-- Los datos y el Instagram comparten fila y, por lo tanto, alto,
+             radio y línea base: los tres son `.pieza` y el contenedor manda
+             sobre los tres. Es la diferencia entre una fila y tres cosas
+             puestas una al lado de la otra. -->
+        <div class="fila-piezas fila-datos">
+          @for (dato of m.protagonista.datos; track dato.etiqueta) {
+            <span class="pieza pieza-dato">
+              <span class="cifra">{{ dato.valor }}</span>
+              <span class="etiqueta">{{ dato.etiqueta }}</span>
+            </span>
+          }
+
+          @if (m.protagonista.instagram) {
+            <span class="pieza pieza-red">
+              <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="5" />
+                <circle cx="12" cy="12" r="4" />
+                <circle cx="17.2" cy="6.8" r="1.2" fill="currentColor" stroke="none" />
+              </svg>
+              <span class="usuario">{{ m.protagonista.instagram }}</span>
+            </span>
+          }
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------
+           El llamado a la acción. Es la única zona con el amarillo y la
+           única con una superficie blanca: en un mural que se mira de
+           lejos, el contraste es lo que dice «esto es lo que hay que
+           hacer», mucho antes de que nadie alcance a leer el texto.
+           --------------------------------------------------------------- -->
+      <aside class="zona-llamado panel">
+        <div class="llamado-cabecera">
+          <p class="llamado-antetitulo">Escanea con tu celular</p>
+          <p class="llamado-titulo">{{ m.llamado.titulo }}</p>
+        </div>
+
+        <div class="tarjeta-qr">
+          <app-codigo-qr [url]="m.llamado.url" />
+        </div>
+
+        <div class="llamado-pie">
+          <p class="llamado-bajada">{{ m.llamado.bajada }}</p>
+          <p class="llamado-url">{{ urlLegible() }}</p>
+        </div>
+      </aside>
+
+      @if (m.galeria.length) {
+        <section class="zona-galeria">
+          <app-galeria [fotos]="m.galeria" />
+        </section>
+      }
+    </div>
+  } @else {
+    <!-- Sin contenido todavía. Un televisor no tiene consola donde mirar el
+         error, así que el error se dice en pantalla y con la ruta exacta
+         del archivo que hay que arreglar. -->
+    <div class="espera">
+      <p class="espera-titulo">{{ error() ? 'No se pudo cargar el mural' : 'Cargando el mural…' }}</p>
+      @if (error(); as detalle) {
+        <p class="espera-detalle">{{ detalle }}</p>
+      }
+    </div>
+  }
+</main>

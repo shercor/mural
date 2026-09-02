@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Mural</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Mural publicitario para televisor">
+  <meta name="theme-color" content="#04121f">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+  <!--
+    Dos familias con trabajos distintos:
+
+    Archivo para los titulares — grotesca de ancho variable, que es lo que
+    permite el nombre en mayúscula pesada y ancha sin recurrir a una fuente
+    display aparte.
+
+    Barlow para el cuerpo — abre bien y se lee a tres metros, que es la
+    distancia real a la que se mira un televisor.
+
+    Si el aparato está sin internet esto no carga y el mural cae en los
+    respaldos declarados en styles.scss. Se ve distinto, pero se ve.
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..900&family=Barlow:wght@400;500;600;700&display=swap"
+  >
+
+  <!-- El fondo se pinta antes de que arranque Angular: sin esto el
+       televisor muestra un destello blanco a pantalla completa. -->
+  <style>
+    html, body { background: #04121f; }
+  </style>
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>

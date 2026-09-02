@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Marcador de posición">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#1a8ba6"/>
+      <stop offset="1" stop-color="#073049"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3">
+    <path d="M0 390 Q 400 350 800 390 T 1600 390"/>
+    <path d="M0 450 Q 400 410 800 450 T 1600 450"/>
+    <path d="M0 510 Q 400 470 800 510 T 1600 510"/>
+  </g>
+  <text x="50%" y="47%" text-anchor="middle" fill="#ffffff" fill-opacity="0.9"
+        font-family="Archivo, Helvetica, Arial, sans-serif" font-size="34" font-weight="800"
+        letter-spacing="4">REEMPLAZA ESTA FOTO</text>
+  <text x="50%" y="54%" text-anchor="middle" fill="#ffffff" fill-opacity="0.6"
+        font-family="Barlow, Helvetica, Arial, sans-serif" font-size="26">contenido/fotos/03.jpg</text>
+</svg>

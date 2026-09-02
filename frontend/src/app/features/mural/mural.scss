@@ -1,0 +1,361 @@
+:host {
+  display: block;
+}
+
+.mural {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* ==================================================================
+   FONDO
+
+   Nada de `filter: blur()`: en un televisor, desenfocar una superficie
+   de pantalla completa es de las operaciones más caras que hay y varios
+   modelos la resuelven a tirones. Los degradados radiales ya llegan
+   suaves de fábrica y solo se les anima el `transform`, que sí va por
+   GPU en todos lados.
+   ================================================================== */
+.oleaje {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(115% 85% at 10% -10%, #0f5679 0%, transparent 55%),
+    radial-gradient(95% 75% at 105% 110%, #0b3f60 0%, transparent 58%),
+    linear-gradient(158deg, #06263e 0%, #04121f 68%);
+}
+
+.corriente {
+  position: absolute;
+  display: block;
+  width: 70%;
+  height: 90%;
+  will-change: transform;
+}
+
+.corriente-1 {
+  top: -20%;
+  left: -10%;
+  background: radial-gradient(closest-side, rgb(53 208 232 / 13%), transparent 72%);
+  animation: deriva-1 52s ease-in-out infinite alternate;
+}
+
+.corriente-2 {
+  bottom: -25%;
+  right: -15%;
+  background: radial-gradient(closest-side, rgb(255 210 74 / 7%), transparent 72%);
+  animation: deriva-2 67s ease-in-out infinite alternate;
+}
+
+@keyframes deriva-1 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(9%, 7%, 0) scale(1.18); }
+}
+
+@keyframes deriva-2 {
+  from { transform: translate3d(0, 0, 0) scale(1.12); }
+  to   { transform: translate3d(-8%, -6%, 0) scale(1); }
+}
+
+/* ==================================================================
+   MAQUETACIÓN
+
+   El llamado a votar toma la columna derecha COMPLETA, de arriba abajo.
+   No es un recuadro más dentro de la composición: es la mitad del motivo
+   por el que el mural existe, y a tres metros lo que se lee primero es
+   la forma, no el texto.
+   ================================================================== */
+.lienzo {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  height: 100%;
+  grid-template-columns: 32fr 40fr 28fr;
+  /* `minmax(0, 1fr)` y no `1fr`: una fila con imágenes dentro se niega a
+     encogerse por debajo de su contenido y desborda el alto del televisor. */
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'encabezado encabezado llamado'
+    'retrato    identidad  llamado'
+    'galeria    galeria    llamado';
+  gap: 1.6rem 2rem;
+}
+
+.zona-encabezado { grid-area: encabezado; }
+.zona-retrato    { grid-area: retrato; }
+.zona-identidad  { grid-area: identidad; display: flex; flex-direction: column; justify-content: center; }
+.zona-llamado    { grid-area: llamado; }
+.zona-galeria    { grid-area: galeria; height: 13rem; }
+
+.rotulo {
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+/* ==================================================================
+   RETRATO
+   ================================================================== */
+.retrato {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  /* Un acercamiento lentísimo. Dos motivos, y el segundo pesa más que el
+     primero: da algo de vida a una imagen fija, y mueve los píxeles lo
+     suficiente como para que ocho horas diarias del mismo encuadre no
+     queden marcadas en el panel del televisor. */
+  animation: acercar 44s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes acercar {
+  from { transform: scale(1); }
+  to   { transform: scale(1.09); }
+}
+
+/* Ata la foto al fondo por abajo, para que el marco no se lea como una
+   estampilla pegada encima del mural. */
+.velo {
+  position: absolute;
+  inset: 55% 0 0 0;
+  background: linear-gradient(180deg, transparent, rgb(4 18 31 / 55%));
+  pointer-events: none;
+}
+
+/* ==================================================================
+   IDENTIDAD
+   ================================================================== */
+.nombre {
+  margin: 1.6rem 0 0;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--fuente-titulo);
+  text-transform: uppercase;
+  color: var(--color-tinta);
+}
+
+/* `font-stretch` sobre la variable Archivo: el nombre gana ancho sin pasar
+   a otra familia. Si la fuente no cargó, el navegador ignora esta línea y
+   el respaldo se ve normal, que es un resultado aceptable. */
+.nombre-pila {
+  font-size: 6.4rem;
+  font-weight: 900;
+  font-stretch: 112%;
+  line-height: 0.86;
+  letter-spacing: -0.02em;
+}
+
+.nombre-apellidos {
+  margin-top: 0.5rem;
+  font-size: 3.1rem;
+  font-weight: 600;
+  font-stretch: 105%;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--color-tinta-2);
+}
+
+.titular {
+  margin: 1.8rem 0 0;
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-agua);
+}
+
+.descripcion {
+  /* Tope de medida. Una línea de más de ~70 caracteres obliga al ojo a
+     buscar dónde empieza la siguiente, y de pie a tres metros esa búsqueda
+     es justo lo que hace que la gente deje de leer. */
+  max-width: 46rem;
+  margin: 1.2rem 0 0;
+  font-size: 1.7rem;
+  line-height: 1.45;
+  color: var(--color-tinta-2);
+}
+
+.fila-datos {
+  margin-top: 2.2rem;
+}
+
+.pieza-pais .bandera { font-size: 1.7rem; line-height: 1; }
+
+.pieza-pais .pais {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--color-tinta-2);
+}
+
+.pieza-red .usuario {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--color-tinta-2);
+}
+
+/* Mismo tamaño y mismo grosor de trazo que cualquier otro icono que se
+   sume después: dos iconos juntos con trazos distintos se leen como si
+   uno pesara más que el otro. */
+.icono {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  color: var(--color-tinta-3);
+}
+
+/* ==================================================================
+   LLAMADO A LA ACCIÓN
+   ================================================================== */
+.zona-llamado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2.6rem 2rem;
+  text-align: center;
+}
+
+.llamado-antetitulo {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--color-tinta-3);
+}
+
+.llamado-titulo {
+  margin: 0.7rem 0 0;
+  font-family: var(--fuente-titulo);
+  font-size: 2.7rem;
+  font-weight: 900;
+  font-stretch: 108%;
+  line-height: 1.02;
+  text-transform: uppercase;
+  color: var(--color-acento);
+}
+
+/*
+  Tarjeta blanca con el QR. El blanco no es decorativo: un lector de
+  teléfono busca módulos oscuros sobre fondo claro, y sobre el azul del
+  mural el contraste no alcanza. Por eso el código va sobre blanco puro,
+  y el `padding` es la zona de silencio visible además de la que ya trae
+  el propio SVG.
+
+  El tamaño manda: en un televisor de 55" a FullHD, estos 26rem son unos
+  25 cm reales, que es lo que hace falta para escanear desde tres metros.
+  Achicarlo es la forma más rápida de que el mural deje de funcionar.
+*/
+.tarjeta-qr {
+  width: 100%;
+  max-width: 26rem;
+  aspect-ratio: 1;
+  padding: 1.4rem;
+  border-radius: var(--radio-panel);
+  background: #ffffff;
+  color: #04121f;
+  box-shadow: 0 1.5rem 3rem -0.8rem rgb(2 10 18 / 60%);
+}
+
+/* Respaldo para televisores sin `aspect-ratio` (Chromium < 88): sin esto
+   la tarjeta colapsaría en una franja y el QR no se podría leer. */
+@supports not (aspect-ratio: 1) {
+  .tarjeta-qr::before {
+    content: '';
+    display: block;
+    padding-top: 100%;
+  }
+}
+
+.llamado-bajada {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.3;
+  color: var(--color-tinta-2);
+}
+
+.llamado-url {
+  margin: 0.8rem 0 0;
+  font-size: 1.3rem;
+  line-height: 1.35;
+  /* La URL es larga y no tiene espacios; sin esto se sale del panel. */
+  overflow-wrap: anywhere;
+  color: var(--color-tinta-3);
+}
+
+/* ==================================================================
+   ESTADO SIN CONTENIDO
+   ================================================================== */
+.espera {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.espera-titulo {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--color-tinta);
+}
+
+.espera-detalle {
+  margin: 0;
+  font-size: 1.6rem;
+  color: var(--color-tinta-3);
+}
+
+/* ==================================================================
+   Vista de revisión (portátil o teléfono). No es el destino del mural:
+   es cómo se mira mientras se trabaja, sin un televisor delante.
+   ================================================================== */
+@media (max-width: 999px) {
+  .mural {
+    height: auto;
+    width: auto;
+    min-height: 100vh;
+  }
+
+  .lienzo {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-template-areas:
+      'encabezado'
+      'retrato'
+      'identidad'
+      'llamado'
+      'galeria';
+  }
+
+  .zona-retrato { height: 60vh; }
+  .zona-galeria { height: auto; }
+  .nombre-pila { font-size: 3.4rem; }
+  .nombre-apellidos { font-size: 1.7rem; }
+}
+
+/* ==================================================================
+   Quien pidió menos movimiento no quiere ver un mural que respira.
+   Se apaga todo el movimiento; el mural sigue completo y legible.
+   ================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .corriente,
+  .retrato {
+    animation: none;
+  }
+}

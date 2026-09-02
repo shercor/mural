@@ -1,0 +1,23 @@
+# Dependencias
+/frontend/node_modules/
+/frontend/.angular/
+
+# Compilados
+/frontend/dist/
+
+# Entorno — el .env es de cada máquina, solo se versiona el ejemplo
+.env
+.env.*
+!.env.example
+
+# Fotos del mural: son material de cada campaña, pesan y cambian seguido.
+# El repositorio versiona la estructura y los marcadores, no las imágenes.
+/frontend/public/contenido/fotos/*
+!/frontend/public/contenido/fotos/.gitkeep
+!/frontend/public/contenido/fotos/*.svg
+
+# Herramientas
+/.idea/
+/.vscode/
+*.swp
+.DS_Store

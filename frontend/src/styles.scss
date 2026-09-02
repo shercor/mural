@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==================================================================
+   Sistema visual del mural.
+
+   Dos ideas mandan sobre todo lo demás:
+
+   1. EL LIENZO ES UNO SOLO. El mural se diseñó sobre 1920x1080 y se
+      escala entero. No hay tres maquetaciones para HD, FullHD y 2K:
+      hay una, medida en `rem`, y el `rem` cambia con la pantalla.
+      Ver el bloque `html` más abajo.
+
+   2. LO MIRA GENTE DE PIE, A TRES METROS. Nada de texto fino ni de
+      grises sobre grises: cuerpos grandes, contraste alto y una sola
+      cosa importante por zona.
+   ================================================================== */
+
+@layer base {
+  :root {
+    /* ----------------------------------------------------------------
+       Paleta. Azul de mar abierto, que es el tema, con un amarillo
+       cálido como único color de acción.
+
+       El amarillo no es decorativo: es el color del llamado a votar y
+       del QR. Aparece SOLO ahí. En cuanto se usa para adornar deja de
+       señalar y el ojo pierde a dónde tiene que ir.
+       ---------------------------------------------------------------- */
+    --color-abismo: #04121f;
+    --color-marea: #072b45;
+    --color-espuma: #0e4364;
+    --color-borde: #1b5b81;
+
+    --color-tinta: #f2f9ff;
+    --color-tinta-2: #bcd8ec;
+    --color-tinta-3: #82abc7;
+
+    --color-acento: #ffd24a;
+    --color-acento-tinta: #0a2740;
+    --color-agua: #35d0e8;
+
+    /* ----------------------------------------------------------------
+       Tipografía. Dos voces con trabajos distintos: Archivo lleva los
+       titulares (ancho variable, aguanta bien la mayúscula pesada del
+       nombre) y Barlow el cuerpo, que se lee de lejos sin cansar.
+
+       Los respaldos importan de verdad: si el televisor está sin
+       internet, Google Fonts no carga y el mural tiene que seguir
+       viéndose bien con lo que trae el aparato.
+       ---------------------------------------------------------------- */
+    --fuente-titulo: 'Archivo', 'Archivo Black', 'Helvetica Neue', Arial, sans-serif;
+    --fuente-cuerpo: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+    --radio-panel: 1.5rem;
+    --radio-pieza: 0.75rem;
+
+    /*
+      Alto común de las piezas pequeñas de una misma fila (los datos del
+      encabezado, la etiqueta de país, el usuario de Instagram).
+
+      Existe como token y no como número repetido porque el chip, la
+      etiqueta y el enlace se definen en tres reglas distintas y, sin un
+      valor compartido, terminan midiendo 44, 46 y 48 px. Esa diferencia
+      no se ve mirando: se ve midiendo, y se nota igual.
+    */
+    --alto-pieza: 3.25rem;
+
+    /*
+      Zona segura contra el sobrebarrido (overscan). Muchos televisores
+      recortan entre un 2% y un 5% de cada borde: contenido pegado al
+      canto simplemente no existe para el espectador.
+
+      Si en tu TV se ve recortado, sube este valor; si sobra marco negro,
+      bájalo. Es el único número que hay que tocar para calzar el mural
+      en un aparato concreto.
+    */
+    --zona-segura: 2.5%;
+  }
+
+  /* ----------------------------------------------------------------
+     EL ESCALADO. Todo el mural está medido en `rem`; aquí se decide
+     cuánto vale un `rem` y con eso se resuelven HD, FullHD y 2K de una
+     sola vez.
+
+     1920 / 120 = 16px  ->  a 1920x1080 el diseño está a escala 1:1
+     A 1366x768  el rem baja a 11.4px  (el mismo diseño, más chico)
+     A 2560x1440 el rem sube a 21.3px  (el mismo diseño, más grande)
+
+     El `min()` con la altura es lo que evita que en una pantalla más
+     ancha que 16:9 el contenido crezca hasta desbordar por abajo.
+
+     La primera declaración es el respaldo para navegadores de TV viejos
+     que no entienden `min()`: escalan solo por ancho, que es correcto en
+     16:9, que es lo que es un televisor.
+     ---------------------------------------------------------------- */
+  html {
+    font-size: 0.8333vw;
+    font-size: min(0.8333vw, 1.4815vh);
+  }
+
+  body {
+    @apply bg-abismo text-tinta font-cuerpo antialiased;
+    margin: 0;
+    /* Un mural no se desplaza. Si algo no cabe, el error es de
+       maquetación y hay que verlo, no esconderlo tras una barra. */
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ----------------------------------------------------------------
+     Modo escritorio / teléfono. No es "responsive" en el sentido
+     habitual: es el modo en que se revisa el mural mientras se trabaja,
+     sin un televisor delante.
+
+     Por debajo de 1000px el lienzo fijo deja de tener sentido (el rem
+     quedaría en 8px y no se leería nada), así que se vuelve a tipografía
+     normal y la maquetación se apila y se desplaza.
+     ---------------------------------------------------------------- */
+  @media (max-width: 999px) {
+    html {
+      font-size: 15px;
+    }
+
+    body {
+      overflow: auto;
+      height: auto;
+    }
+  }
+}
+
+@layer components {
+  /* ----------------------------------------------------------------
+     Superficie base de los bloques. Un solo lugar para el fondo, el
+     borde y el radio: si mañana el mural cambia de aire, cambia aquí.
+     ---------------------------------------------------------------- */
+  .panel {
+    @apply relative rounded-panel border overflow-hidden;
+    background: linear-gradient(160deg, rgb(14 67 100 / 78%), rgb(7 43 69 / 92%));
+    border-color: rgb(27 91 129 / 55%);
+    box-shadow: 0 1.5rem 3rem -1rem rgb(2 10 18 / 65%);
+  }
+
+  /* ----------------------------------------------------------------
+     Fila de piezas del encabezado (país, datos, Instagram).
+
+     La clase es dueña de la fila entera, en vez de que cada pieza se
+     defienda sola: así todas comparten alto, radio y línea base, que es
+     exactamente lo que se rompe cuando cada una se define por su cuenta.
+
+     `items-stretch` y no `items-center`: con alto forzado desde el
+     contenedor, centrar deja las piezas flotando a distintas alturas si
+     alguna tiene una línea de texto de más.
+     ---------------------------------------------------------------- */
+  .fila-piezas {
+    @apply flex flex-wrap items-stretch;
+    gap: 0.75rem;
+  }
+
+  .fila-piezas > .pieza {
+    height: var(--alto-pieza);
+  }
+
+  /* Pieza: la unidad chica del encabezado. Un rol, un aspecto. */
+  .pieza {
+    @apply inline-flex items-center gap-[0.6rem] rounded-pieza border px-[1.1rem] leading-none;
+    height: var(--alto-pieza);
+    background: rgb(7 43 69 / 70%);
+    border-color: rgb(27 91 129 / 60%);
+  }
+
+  /* Variante de dato: una cifra grande con su etiqueta al lado.
+     Mismo alto y mismo radio que `.pieza`; solo cambia lo de adentro. */
+  .pieza-dato .cifra {
+    @apply font-titulo text-[1.9rem] font-extrabold tracking-tight text-tinta;
+  }
+
+  .pieza-dato .etiqueta {
+    @apply text-[1.15rem] uppercase tracking-[0.12em] text-tinta-3;
+  }
+
+  /* ----------------------------------------------------------------
+     Marco de foto. Las fotos llegan con proporciones distintas —las
+     saca gente distinta con teléfonos distintos— así que el marco manda
+     sobre la imagen y no al revés: `cover` recorta, nunca deforma.
+     ---------------------------------------------------------------- */
+  .marco-foto {
+    @apply relative overflow-hidden rounded-panel border;
+    border-color: rgb(27 91 129 / 55%);
+    background: var(--color-marea);
+  }
+
+  .marco-foto > img {
+    @apply absolute inset-0 h-full w-full object-cover;
+  }
+
+  /* ----------------------------------------------------------------
+     Rótulo de sección. Pequeño, en versalitas, con una línea de agua
+     al lado que lo ancla sin robarle atención al contenido.
+     ---------------------------------------------------------------- */
+  .rotulo {
+    @apply flex items-center gap-[0.9rem] text-[1rem] font-semibold uppercase tracking-[0.28em] text-tinta-3;
+  }
+
+  .rotulo::after {
+    @apply block h-px flex-1;
+    content: '';
+    background: linear-gradient(90deg, rgb(53 208 232 / 45%), transparent);
+  }
+}
+
+@layer utilities {
+  /* Margen de sobrebarrido. Se aplica una sola vez, en el lienzo. */
+  .zona-segura {
+    padding: var(--zona-segura);
+  }
+}
