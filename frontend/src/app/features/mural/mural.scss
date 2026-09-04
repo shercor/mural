@@ -89,7 +89,11 @@
 .zona-retrato    { grid-area: retrato; }
 .zona-identidad  { grid-area: identidad; display: flex; flex-direction: column; justify-content: center; }
 .zona-llamado    { grid-area: llamado; }
-.zona-galeria    { grid-area: galeria; height: 13rem; }
+/* Más alta que una tira de fotos horizontales: las de la cinta van en
+   retrato (3:4) y con menos alto quedarían en sellos. Lo que crece aquí
+   se lo quita a la fila del retrato, que es `cover` y solo recorta un
+   poco más. */
+.zona-galeria    { grid-area: galeria; height: 20rem; }
 
 .rotulo {
   font-size: 1.35rem;

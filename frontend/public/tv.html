@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Mural — TV</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#04121f">
+
+<!--
+  ===================================================================
+  VERSIÓN PARA EL TELEVISOR — sin framework, sin build, sin módulos.
+
+  Es la misma pantalla que la app Angular, replicada en HTML/CSS/JS
+  plano para que corra en el navegador viejo de un LG (webOS). Angular
+  22 emite <script type="module"> y ese navegador lo ignora: pantalla
+  azul y nada más.
+
+  Reglas de esta copia:
+   - JS estilo ES5: var, function, XMLHttpRequest. Nada de =>, const,
+     let, `plantillas`, ?. ni módulos.
+   - Layout con flexbox, NO grid (no existe antes de Chromium 57).
+   - Sin gap de flex (Chromium 84+); la separación va con margin.
+   - Sin min() ni aspect-ratio; se usan respaldos.
+   - El contenido sale de contenido/mural.json, igual que la app, y se
+     relee cada 60 s. El QR se genera acá, sin llamar a ninguna API:
+     el televisor puede estar sin internet.
+
+  Se sirve desde el mismo nginx del contenedor `tv`:
+     http://IP-DE-ESTA-MAQUINA:8090/tv.html
+  ===================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ================================================================
+   BASE
+   ================================================================ */
+* { box-sizing: border-box; }
+
+html, body { margin: 0; background: #04121f; }
+
+/* El escalado: todo el mural está medido en rem y acá se decide cuánto
+   vale un rem. La primera línea es el respaldo (escala por ancho, que
+   es lo correcto en 16:9); la segunda, para navegadores con min(),
+   evita que en una pantalla más ancha que 16:9 desborde por abajo. */
+html { font-size: 0.8333vw; }
+html { font-size: min(0.8333vw, 1.4815vh); }
+
+body {
+  font-family: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: #f2f9ff;
+  overflow: hidden;
+  height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; }
+
+/* ================================================================
+   CONTENEDOR Y FONDO
+   ================================================================ */
+.mural {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.oleaje {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(115% 85% at 10% -10%, #0f5679 0%, transparent 55%),
+    radial-gradient(95% 75% at 105% 110%, #0b3f60 0%, transparent 58%),
+    linear-gradient(158deg, #06263e 0%, #04121f 68%);
+}
+
+.corriente {
+  position: absolute;
+  display: block;
+  width: 70%;
+  height: 90%;
+}
+
+.corriente-1 {
+  top: -20%; left: -10%;
+  background: radial-gradient(closest-side, rgba(53, 208, 232, 0.13), transparent 72%);
+  -webkit-animation: deriva-1 52s ease-in-out infinite alternate;
+  animation: deriva-1 52s ease-in-out infinite alternate;
+}
+
+.corriente-2 {
+  bottom: -25%; right: -15%;
+  background: radial-gradient(closest-side, rgba(255, 210, 74, 0.07), transparent 72%);
+  -webkit-animation: deriva-2 67s ease-in-out infinite alternate;
+  animation: deriva-2 67s ease-in-out infinite alternate;
+}
+
+@-webkit-keyframes deriva-1 {
+  from { -webkit-transform: translate(0, 0) scale(1); }
+  to   { -webkit-transform: translate(9%, 7%) scale(1.18); }
+}
+@keyframes deriva-1 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(9%, 7%) scale(1.18); }
+}
+@-webkit-keyframes deriva-2 {
+  from { -webkit-transform: translate(0, 0) scale(1.12); }
+  to   { -webkit-transform: translate(-8%, -6%) scale(1); }
+}
+@keyframes deriva-2 {
+  from { transform: translate(0, 0) scale(1.12); }
+  to   { transform: translate(-8%, -6%) scale(1); }
+}
+
+/* ================================================================
+   MAQUETACIÓN — flexbox
+
+   Original en grid: 32fr / 40fr / 28fr, con el llamado ocupando la
+   columna derecha entera. Acá: una fila con la columna izquierda
+   (72) y el llamado (28); dentro de la izquierda, una columna con
+   encabezado / (retrato + identidad) / galería.
+   ================================================================ */
+.lienzo {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  padding: 2.5%; /* zona segura contra el sobrebarrido del televisor */
+}
+
+.col-izq {
+  display: flex;
+  flex-direction: column;
+  flex: 72;
+  min-width: 0;
+  margin-right: 2rem;
+}
+
+.zona-encabezado { flex: none; margin-bottom: 1.6rem; }
+
+.fila-centro {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0; /* deja que la fila se encoja en vez de desbordar el alto */
+}
+
+.zona-retrato {
+  position: relative;
+  overflow: hidden;
+  flex: 32;
+  margin-right: 2rem;
+}
+
+.zona-identidad {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 40;
+  min-width: 0;
+}
+
+.zona-galeria {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  height: 20rem;
+  margin-top: 1.6rem;
+}
+
+.zona-llamado { flex: 28; }
+
+/* ================================================================
+   SUPERFICIES
+   ================================================================ */
+.marco-foto {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(27, 91, 129, 0.55);
+  background: #072b45;
+}
+
+.panel {
+  position: relative;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(27, 91, 129, 0.55);
+  overflow: hidden;
+  background: linear-gradient(160deg, rgba(14, 67, 100, 0.78), rgba(7, 43, 69, 0.92));
+  box-shadow: 0 1.5rem 3rem -1rem rgba(2, 10, 18, 0.65);
+}
+
+/* ================================================================
+   ENCABEZADO
+   ================================================================ */
+.rotulo {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: #82abc7;
+}
+
+.rotulo:after {
+  content: "";
+  display: block;
+  height: 1px;
+  flex: 1;
+  margin-left: 0.9rem;
+  background: linear-gradient(90deg, rgba(53, 208, 232, 0.45), transparent);
+}
+
+/* ================================================================
+   RETRATO
+   ================================================================ */
+.retrato {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  /* Acercamiento lentísimo: da algo de vida a una foto fija y mueve
+     los píxeles lo suficiente para que ocho horas del mismo encuadre
+     no queden marcadas en el panel. */
+  -webkit-animation: acercar 44s ease-in-out infinite alternate;
+  animation: acercar 44s ease-in-out infinite alternate;
+}
+
+@-webkit-keyframes acercar {
+  from { -webkit-transform: scale(1); }
+  to   { -webkit-transform: scale(1.09); }
+}
+@keyframes acercar {
+  from { transform: scale(1); }
+  to   { transform: scale(1.09); }
+}
+
+.velo {
+  position: absolute;
+  top: 55%; right: 0; bottom: 0; left: 0;
+  background: linear-gradient(180deg, transparent, rgba(4, 18, 31, 0.55));
+}
+
+/* ================================================================
+   IDENTIDAD
+   ================================================================ */
+.fila-piezas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.fila-datos { margin-top: 2.2rem; }
+
+.pieza {
+  display: inline-flex;
+  align-items: center;
+  height: 3.25rem;
+  padding: 0 1.1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(27, 91, 129, 0.6);
+  background: rgba(7, 43, 69, 0.7);
+  line-height: 1;
+  margin: 0 0.75rem 0.75rem 0;
+}
+
+.pieza > * { margin-right: 0.6rem; }
+.pieza > *:last-child { margin-right: 0; }
+
+.pieza-pais .bandera { font-size: 1.7rem; line-height: 1; }
+
+.pieza-pais .pais {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #bcd8ec;
+}
+
+.nombre {
+  display: flex;
+  flex-direction: column;
+  margin: 1.6rem 0 0;
+  font-family: 'Archivo', 'Archivo Black', 'Helvetica Neue', Arial, sans-serif;
+  text-transform: uppercase;
+  color: #f2f9ff;
+}
+
+.nombre-pila {
+  font-size: 6.4rem;
+  font-weight: 900;
+  line-height: 0.86;
+  letter-spacing: -0.02em;
+}
+
+.nombre-apellidos {
+  margin-top: 0.5rem;
+  font-size: 3.1rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: #bcd8ec;
+}
+
+.titular {
+  margin: 1.8rem 0 0;
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #35d0e8;
+}
+
+.descripcion {
+  max-width: 46rem;
+  margin: 1.2rem 0 0;
+  font-size: 1.7rem;
+  line-height: 1.45;
+  color: #bcd8ec;
+}
+
+.pieza-dato .cifra {
+  font-family: 'Archivo', 'Archivo Black', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #f2f9ff;
+}
+
+.pieza-dato .etiqueta {
+  font-size: 1.15rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #82abc7;
+}
+
+.pieza-red .icono {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  color: #82abc7;
+}
+
+.pieza-red .usuario {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #bcd8ec;
+}
+
+/* ================================================================
+   LLAMADO A LA ACCIÓN
+   ================================================================ */
+.zona-llamado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.6rem 2rem;
+  text-align: center;
+}
+
+.llamado-cabecera { margin-bottom: 2rem; }
+
+.llamado-antetitulo {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: #82abc7;
+}
+
+.llamado-titulo {
+  margin: 0.7rem 0 0;
+  font-family: 'Archivo', 'Archivo Black', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 2.7rem;
+  font-weight: 900;
+  line-height: 1.02;
+  text-transform: uppercase;
+  color: #ffd24a;
+}
+
+/* Tarjeta blanca con el QR. El blanco no es decorativo: un lector de
+   teléfono busca módulos oscuros sobre fondo claro y sobre el azul del
+   mural el contraste no alcanza. El cuadrado se arma con el truco del
+   padding-top (no hay aspect-ratio en los navegadores viejos). */
+.tarjeta-qr {
+  position: relative;
+  width: 100%;
+  max-width: 26rem;
+  padding: 1.4rem;
+  border-radius: 1.5rem;
+  background: #ffffff;
+  box-shadow: 0 1.5rem 3rem -0.8rem rgba(2, 10, 18, 0.6);
+}
+
+.tarjeta-qr:before {
+  content: "";
+  display: block;
+  padding-top: 100%;
+}
+
+.tarjeta-qr-inner {
+  position: absolute;
+  top: 1.4rem; right: 1.4rem; bottom: 1.4rem; left: 1.4rem;
+}
+
+.tarjeta-qr-inner svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.llamado-pie { margin-top: 2rem; }
+
+.llamado-bajada {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.3;
+  color: #bcd8ec;
+}
+
+.llamado-url {
+  margin: 0.8rem 0 0;
+  font-size: 1.3rem;
+  line-height: 1.35;
+  color: #82abc7;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+/* ================================================================
+   GALERÍA — cinta que corre
+
+   La lista de fotos se pinta dos veces seguidas y la animación
+   desplaza la cinta exactamente media cinta (-50%). Al llegar a la
+   mitad la imagen es idéntica al inicio, así que el salto de vuelta a
+   cero no se ve. La duración la fija el JS: nº de fotos x 6 s.
+   ================================================================ */
+.pista {
+  display: flex;
+  width: -webkit-max-content;
+  width: max-content;
+  height: 100%;
+  -webkit-animation: correr 60s linear infinite;
+  animation: correr 60s linear infinite;
+}
+
+@-webkit-keyframes correr {
+  from { -webkit-transform: translateX(0); }
+  to   { -webkit-transform: translateX(-50%); }
+}
+@keyframes correr {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.diapo {
+  position: relative;
+  flex: none;
+  height: 100%;
+  width: 15rem;             /* 20rem de alto en proporción 3:4 (retrato) */
+  margin: 0 1.25rem 0 0;    /* margin, no gap: así la costura del bucle no se aprieta */
+}
+
+.diapo img {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.diapo figcaption {
+  position: absolute;
+  right: 0; bottom: 0; left: 0;
+  padding: 2.6rem 1.1rem 0.9rem;
+  font-size: 1rem;
+  line-height: 1.25;
+  color: #f2f9ff;
+  background: linear-gradient(180deg, transparent, rgba(4, 18, 31, 0.88));
+}
+
+/* ================================================================
+   ESTADO SIN CONTENIDO
+   ================================================================ */
+.espera {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+.espera-titulo {
+  margin: 0;
+  font-family: 'Archivo', 'Archivo Black', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 3rem;
+  font-weight: 800;
+  color: #f2f9ff;
+}
+
+.espera-detalle {
+  margin: 1rem 0 0;
+  font-size: 1.6rem;
+  color: #82abc7;
+}
+
+/* ================================================================
+   Vista en un portátil, para previsualizar sin televisor delante.
+   ================================================================ */
+@media (max-width: 999px) {
+  html { font-size: 15px; }
+  body { overflow: auto; height: auto; }
+
+  .mural { height: auto; width: auto; min-height: 100vh; }
+
+  .lienzo { flex-direction: column; }
+  .col-izq { margin-right: 0; }
+  .zona-llamado { margin-top: 1.6rem; }
+  .fila-centro { flex-direction: column; }
+  .zona-retrato { height: 60vh; margin-right: 0; margin-bottom: 1.6rem; }
+  .zona-galeria { height: auto; }
+
+  .pista {
+    width: auto;
+    height: auto;
+    flex-wrap: wrap;
+    -webkit-animation: none;
+    animation: none;
+    -webkit-transform: none;
+    transform: none;
+  }
+  .diapo { width: 100%; max-width: 20rem; height: auto; margin: 0 auto 1.25rem; }
+  .diapo:before { content: ""; display: block; padding-top: 133%; }
+
+  .nombre-pila { font-size: 3.4rem; }
+  .nombre-apellidos { font-size: 1.7rem; }
+}
+
+/* Quien pidió menos movimiento no quiere un mural que respira. */
+@media (prefers-reduced-motion: reduce) {
+  .corriente, .retrato, .pista {
+    -webkit-animation: none;
+    animation: none;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="mural">
+  <div class="oleaje">
+    <span class="corriente corriente-1"></span>
+    <span class="corriente corriente-2"></span>
+  </div>
+
+  <div class="lienzo" id="lienzo" style="display:none">
+    <div class="col-izq">
+      <div class="zona-encabezado">
+        <p class="rotulo" id="campana"></p>
+      </div>
+
+      <div class="fila-centro">
+        <div class="zona-retrato marco-foto">
+          <img class="retrato" id="retrato" alt="">
+          <span class="velo"></span>
+        </div>
+
+        <div class="zona-identidad">
+          <div class="fila-piezas">
+            <span class="pieza pieza-pais">
+              <span class="bandera" id="bandera"></span>
+              <span class="pais" id="pais"></span>
+            </span>
+          </div>
+
+          <h1 class="nombre">
+            <span class="nombre-pila" id="nombrePila"></span>
+            <span class="nombre-apellidos" id="nombreApellidos"></span>
+          </h1>
+
+          <p class="titular" id="titular"></p>
+          <p class="descripcion" id="descripcion"></p>
+
+          <div class="fila-piezas fila-datos" id="filaDatos"></div>
+        </div>
+      </div>
+
+      <div class="zona-galeria">
+        <div class="pista" id="pista"></div>
+      </div>
+    </div>
+
+    <div class="zona-llamado panel">
+      <div class="llamado-cabecera">
+        <p class="llamado-antetitulo">Escanea con tu celular</p>
+        <p class="llamado-titulo" id="llamadoTitulo"></p>
+      </div>
+
+      <div class="tarjeta-qr">
+        <div class="tarjeta-qr-inner" id="qr"></div>
+      </div>
+
+      <div class="llamado-pie">
+        <p class="llamado-bajada" id="llamadoBajada"></p>
+        <p class="llamado-url" id="llamadoUrl"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="espera" id="espera">
+    <p class="espera-titulo" id="esperaTitulo">Cargando el mural&hellip;</p>
+    <p class="espera-detalle" id="esperaDetalle"></p>
+  </div>
+</div>
+
+<script src="vendor/qrcode.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* Cada cuánto se vuelve a leer el mural.json, en milisegundos. Igual
+     que la app: quien edita el archivo ve el cambio en pantalla solo,
+     sin tocar el control remoto. */
+  var INTERVALO_REFRESCO = 60000;
+
+  /* Zona de silencio del QR, en módulos. La norma pide 4. */
+  var SILENCIO = 4;
+
+  /* Segundos que tarda una foto en cruzar su propio ancho en la cinta. */
+  var SEGUNDOS_POR_FOTO = 6;
+
+  /* Mínimo de diapositivas en media cinta, para que con pocas fotos no
+     quede un hueco girando. */
+  var MIN_DIAPOS = 8;
+
+  var ultimoCrudo = '';
+  var yaPinto = false;
+
+  function $(id) { return document.getElementById(id); }
+
+  function texto(id, valor) {
+    var n = $(id);
+    if (n) { n.textContent = valor == null ? '' : String(valor); }
+  }
+
+  function crear(tag, clase, contenido) {
+    var n = document.createElement(tag);
+    if (clase) { n.className = clase; }
+    if (contenido != null) { n.textContent = String(contenido); }
+    return n;
+  }
+
+  function vaciar(n) {
+    while (n && n.firstChild) { n.removeChild(n.firstChild); }
+  }
+
+  /* --------------------------------------------------------------
+     Lectura del contenido
+     -------------------------------------------------------------- */
+  function leer() {
+    var xhr = new XMLHttpRequest();
+    // El ?_= es un rompe-caché para navegadores viejos que ignoran las
+    // cabeceras no-store.
+    xhr.open('GET', 'contenido/mural.json?_=' + (new Date()).getTime(), true);
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+
+      if (xhr.status !== 200 && xhr.status !== 0) {
+        if (!yaPinto) {
+          fallo('No se pudo cargar el mural', 'No se pudo leer contenido/mural.json.');
+        }
+        return;
+      }
+
+      var crudo = xhr.responseText;
+      if (crudo === ultimoCrudo) { return; }
+
+      var data;
+      try {
+        data = JSON.parse(crudo);
+      } catch (e) {
+        if (!yaPinto) {
+          fallo('No se pudo cargar el mural', 'El archivo contenido/mural.json tiene un error de sintaxis.');
+        }
+        return;
+      }
+
+      ultimoCrudo = crudo;
+      pintar(data);
+    };
+
+    xhr.onerror = function () {
+      if (!yaPinto) {
+        fallo('No se pudo cargar el mural', 'No se pudo leer contenido/mural.json.');
+      }
+    };
+
+    xhr.send();
+  }
+
+  function fallo(titulo, detalle) {
+    texto('esperaTitulo', titulo);
+    texto('esperaDetalle', detalle || '');
+    $('espera').style.display = 'flex';
+    $('lienzo').style.display = 'none';
+  }
+
+  /* --------------------------------------------------------------
+     Pintado
+     -------------------------------------------------------------- */
+  function pintar(m) {
+    if (!m || !m.protagonista || !m.llamado) {
+      if (!yaPinto) {
+        fallo('No se pudo cargar el mural', 'El archivo contenido/mural.json está incompleto.');
+      }
+      return;
+    }
+
+    var p = m.protagonista;
+
+    texto('campana', m.campana || '');
+    $('retrato').src = p.foto || '';
+    texto('bandera', p.bandera || '');
+    texto('pais', p.pais || '');
+    texto('nombrePila', p.nombre || '');
+    texto('nombreApellidos', p.apellidos || '');
+    texto('titular', p.titular || '');
+    texto('descripcion', p.descripcion || '');
+
+    pintarDatos(p);
+    pintarLlamado(m.llamado);
+    pintarQr(m.llamado.url || '');
+    pintarGaleria(m.galeria || []);
+
+    yaPinto = true;
+    $('espera').style.display = 'none';
+    $('lienzo').style.display = 'flex';
+  }
+
+  function pintarDatos(p) {
+    var fila = $('filaDatos');
+    vaciar(fila);
+
+    var datos = p.datos || [];
+    for (var i = 0; i < datos.length; i++) {
+      var pieza = crear('span', 'pieza pieza-dato');
+      pieza.appendChild(crear('span', 'cifra', datos[i].valor));
+      pieza.appendChild(crear('span', 'etiqueta', datos[i].etiqueta));
+      fila.appendChild(pieza);
+    }
+
+    if (p.instagram) {
+      var red = crear('span', 'pieza pieza-red');
+      red.innerHTML =
+        '<svg class="icono" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<rect x="3" y="3" width="18" height="18" rx="5"></rect>' +
+        '<circle cx="12" cy="12" r="4"></circle>' +
+        '<circle cx="17.2" cy="6.8" r="1.2" fill="currentColor" stroke="none"></circle>' +
+        '</svg>';
+      red.appendChild(crear('span', 'usuario', p.instagram));
+      fila.appendChild(red);
+    }
+  }
+
+  function pintarLlamado(ll) {
+    texto('llamadoTitulo', ll.titulo || '');
+    texto('llamadoBajada', ll.bajada || '');
+    texto('llamadoUrl', (ll.url || '').replace(/^https?:\/\//, '').replace(/\/$/, ''));
+  }
+
+  /* El QR se dibuja como un solo <path> de SVG y con
+     shape-rendering="crispEdges": el borde del módulo tiene que quedar
+     nítido al escalar para que un lector de teléfono lo lea a tres
+     metros. 'M' recupera un 15% y es lo correcto con el código limpio. */
+  function pintarQr(url) {
+    var caja = $('qr');
+    vaciar(caja);
+    if (!url || typeof qrcode !== 'function') { return; }
+
+    var qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+
+    var n = qr.getModuleCount();
+    var partes = [];
+    for (var fila = 0; fila < n; fila++) {
+      for (var col = 0; col < n; col++) {
+        if (qr.isDark(fila, col)) {
+          partes.push('M' + col + ' ' + fila + 'h1v1h-1z');
+        }
+      }
+    }
+
+    var lado = n + SILENCIO * 2;
+    caja.innerHTML =
+      '<svg viewBox="' + (-SILENCIO) + ' ' + (-SILENCIO) + ' ' + lado + ' ' + lado + '" ' +
+      'shape-rendering="crispEdges" role="img" aria-label="Código QR">' +
+      '<path d="' + partes.join('') + '" fill="#04121f"></path>' +
+      '</svg>';
+  }
+
+  function pintarGaleria(fotos) {
+    var pista = $('pista');
+    vaciar(pista);
+    if (!fotos || !fotos.length) { return; }
+
+    // Media cinta: la lista repetida hasta MIN_DIAPOS.
+    var objetivo = Math.max(MIN_DIAPOS, fotos.length);
+    var base = [];
+    while (base.length < objetivo) {
+      for (var i = 0; i < fotos.length; i++) { base.push(fotos[i]); }
+    }
+
+    // Cinta completa: media cinta + su copia.
+    var cinta = base.concat(base);
+    for (var j = 0; j < cinta.length; j++) {
+      var f = cinta[j];
+      var fig = crear('figure', 'marco-foto diapo');
+
+      var img = document.createElement('img');
+      img.src = f.archivo;
+      img.alt = '';
+      fig.appendChild(img);
+
+      if (f.pie) {
+        // La segunda mitad no le repite el pie a un lector de pantalla.
+        var cap = crear('figcaption', null, f.pie);
+        if (j >= base.length) { cap.setAttribute('aria-hidden', 'true'); }
+        fig.appendChild(cap);
+      }
+
+      pista.appendChild(fig);
+    }
+
+    var dur = base.length * SEGUNDOS_POR_FOTO;
+    pista.style.webkitAnimationDuration = dur + 's';
+    pista.style.animationDuration = dur + 's';
+  }
+
+  /* --------------------------------------------------------------
+     Arranque
+     -------------------------------------------------------------- */
+  leer();
+  setInterval(leer, INTERVALO_REFRESCO);
+})();
+</script>
+
+</body>
+</html>

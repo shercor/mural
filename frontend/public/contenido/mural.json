@@ -8,7 +8,7 @@
     "bandera": "🇨🇱",
     "titular": "Médica y nadadora de aguas abiertas",
     "descripcion": "Soy médica y deportista amateur, y en el agua encontré una de mis mayores pasiones. Entre largas guardias, sacrificios y kilómetros de entrenamiento, logré clasificar al Mundial de OCEANMAN. Representar a Chile y llevar nuestra bandera sería un orgullo inmenso y un sueño hecho realidad.",
-    "foto": "contenido/fotos/protagonista.svg",
+    "foto": "contenido/fotos/protagonista.jpg",
     "instagram": "@javieraherrera.c",
     "datos": [
       { "valor": "1.415", "etiqueta": "votos" },
@@ -17,15 +17,19 @@
   },
 
   "galeria": [
-    { "archivo": "contenido/fotos/01.svg", "pie": "Entrenamiento en aguas abiertas" },
-    { "archivo": "contenido/fotos/02.svg", "pie": "Clasificatoria nacional" },
-    { "archivo": "contenido/fotos/03.svg", "pie": "Kilómetros antes del turno" },
-    { "archivo": "contenido/fotos/04.svg", "pie": "Rumbo al Mundial" }
+    { "archivo": "contenido/fotos/01.jpg", "pie": "Lista para entrar al agua" },
+    { "archivo": "contenido/fotos/02.jpg", "pie": "Saliendo de la travesía" },
+    { "archivo": "contenido/fotos/03.jpg", "pie": "Podio en OCEANMAN Perú" },
+    { "archivo": "contenido/fotos/04.jpg", "pie": "Con las medallas de la fecha" },
+    { "archivo": "contenido/fotos/05.jpg", "pie": "Salida desde el poyete" },
+    { "archivo": "contenido/fotos/06.jpg", "pie": "La bandera de Chile en México" },
+    { "archivo": "contenido/fotos/07.jpg", "pie": "Antes de la largada" },
+    { "archivo": "contenido/fotos/08.jpg", "pie": "Representando a Chile" }
   ],
 
   "llamado": {
     "titulo": "Vota por Javiera",
-    "bajada": "Un voto cada 24 horas. Tu apoyo la lleva al Mundial.",
+    "bajada": "Un voto cada 24 horas. Tu apoyo ayudará a que su sueño se haga realidad y pueda representar al país.",
     "url": "https://welcomeparade.oceanmanswim.com/c/javiera-herrera-corrales"
   }
 }
