@@ -1,125 +1,137 @@
 # Handoff
 
-Estado del proyecto al cerrar la primera sesión, para retomarlo en otra
-máquina. El **README.md** explica cómo funciona el mural; esto explica en
-qué punto quedó y qué falta.
+Estado del proyecto para retomarlo en otra máquina. El **README.md** explica
+cómo funciona el mural; esto explica en qué punto quedó y qué falta.
 
 ---
 
-## Lo primero, en la máquina nueva
+## Primero, en la máquina nueva
 
 ```bash
 make
 ```
 
-Debería dejar el mural en http://localhost:4200. **Ese comando nunca se pudo
-ejecutar**: la máquina donde se escribió el proyecto tenía el disco al 100%
-(279 MB libres de 226 GB) y Docker no podía ni instalar dependencias.
+Debería dejar el mural en http://localhost:4200 con recarga en vivo. Ya
+está probado y funcionando en la máquina original — este comando y `make
+tv` corrieron sin problemas.
 
-Todo lo demás sí está verificado, pero el camino de Docker está sin probar.
-Si algo falla, es el primer sospechoso.
+**Antes de nada, dos archivos que no viajan por git a propósito:**
 
-Comprueba también `make tv`, que es el que compila y sirve el mural para el
-televisor.
+### 1. Las fotos reales
+
+`frontend/public/contenido/fotos/*.jpg` está gitignorado adrede (ver
+`.gitignore`): son material de campaña, pesado y cambia seguido, y el repo
+es **público** en GitHub — no queremos los originales de Javiera dando
+vueltas para siempre en el historial de un repo público.
+
+Te mandé un zip con las 9 fotos por este mismo chat (`fotos-mural.zip`).
+Descomprimilo en `frontend/public/contenido/fotos/` antes de levantar el
+proyecto:
+
+```
+frontend/public/contenido/fotos/
+  protagonista.jpg
+  01.jpg … 08.jpg
+```
+
+`mural.json` ya apunta a esos nombres. Sin las fotos, el mural carga pero
+las imágenes salen rotas.
+
+### 2. El `.env`
+
+También gitignorado. `make` lo crea solo (`MURAL_PORT=4200`, `TV_PORT=8080`)
+si no existe. En la máquina original tuve que subir `TV_PORT` a `8090`
+porque el `8080` lo tenía tomado otro proyecto sin relación (`whishlist_webserver`)
+corriendo en la misma máquina. Es un problema de esa máquina, no del
+proyecto: en la nueva probablemente no haga falta tocarlo. Si `make tv` te
+tira `port is already allocated`, ese es el arreglo.
 
 ---
 
-## Qué se verificó y cómo
+## Qué se hizo en esta sesión
 
-No es «se ve bien en una captura»: son medidas.
-
-**El bundle compila.** 240 kB en crudo, 67 kB transferidos. Angular imprime
-un aviso de navegadores no soportados en cada compilación — es esperado y
-está explicado en el README, sección *Compatibilidad con televisores*. No es
-un error que haya que arreglar.
-
-**La maquetación cabe en las tres resoluciones.** Medido en Chrome sobre el
-bundle compilado, no a ojo:
-
-| Pantalla | 1 rem | `scrollHeight` vs `innerHeight` |
-|----------|-------|--------------------------------|
-| 1366 × 768 | 10,09 px | 681 = 681 |
-| 1920 × 1080 | 14,71 px | 993 = 993 |
-| 2560 × 1440 | 20,04 px | 1353 = 1353 |
-
-Sin desbordamiento vertical ni horizontal en ninguna. (Chrome headless
-recorta 87 px de alto respecto de `--window-size`, de ahí que las alturas no
-sean 768/1080/1440. El escalado por `min()` reaccionó correctamente a esa
-altura menor, que es justamente la prueba de que se adapta.)
-
-**Los controles de una fila miden igual.** Las tres piezas del encabezado
-—los dos datos y el Instagram— dieron `alto=47.8 top=641.0 radio=11.03px
-fuente=14.71px`, idénticas. El alto sale de un token, `--alto-pieza`, no de
-un número repetido en cada regla.
-
-**El QR codifica la URL correcta.** Esto se verificó de punta a punta, que
-era lo que más importaba: un QR equivocado falla en silencio y nadie lo nota
-hasta que alguien se queja de que el enlace no lleva a ninguna parte.
-
-1. Se extrajo el atributo `d` del `<path>` que el navegador realmente pintó.
-2. Se comparó módulo por módulo contra la matriz que produce la librería:
-   coinciden exactamente (descarta transposiciones y errores de índice en el
-   componente).
-3. Se decodificó esa matriz a mano hasta recuperar el texto:
-
-```
-módulos 37x37 -> versión 5, 708 módulos oscuros
-modo=0100 (byte)  largo=65 bytes
-URL decodificada: https://welcomeparade.oceanmanswim.com/c/javiera-herrera-corrales
-COINCIDE con la esperada
-```
-
-**Si cambias `llamado.url`, esta verificación deja de valer.** Vuelve a
-escanearlo con un teléfono de verdad antes de dejarlo puesto.
+- **Autoría del commit inicial corregida**: el primer commit tenía el email
+  de la empresa por error; se reescribió con `--amend --reset-author`.
+- **Galería → cinta continua**: [componentes/galeria.ts](frontend/src/app/features/mural/componentes/galeria.ts)
+  dejó de ser rotación por ranura y ahora es un carrusel que corre en
+  horizontal, lento, sin costura (lista duplicada + `translateX(-50%)`).
+  Marcos en retrato (3:4) porque las fotos reales son verticales;
+  `.zona-galeria` subió a `20rem` en [mural.scss](frontend/src/app/features/mural/mural.scss)
+  para que el retrato tenga presencia.
+- **Fotos reales cargadas**: se reemplazaron los marcadores `.svg` por las
+  9 fotos de Javiera, renombradas a `01.jpg`…`08.jpg` y `protagonista.jpg`
+  (elegida a mano como la mejor toma de héroe). `mural.json` actualizado.
+- **[tv.html](frontend/public/tv.html)**: una copia de la misma pantalla en
+  HTML/CSS/JS plano, sin Angular ni build. Existe porque el navegador de la
+  TV (LG webOS) es un Chromium viejo que ignora `<script type="module">` —
+  el bundle de Angular 22 le queda en pantalla azul, sin renderizar nada.
+  `tv.html` usa JS estilo ES5, flexbox (no grid), sin `gap`/`min()`/
+  `aspect-ratio`, con prefijos `-webkit-`. Reutiliza
+  [vendor/qrcode.js](frontend/public/vendor/qrcode.js) (la misma librería
+  del QR que usa la app, vendorizada). Se sirve desde el mismo nginx del
+  contenedor `tv`, sin infraestructura nueva: `http://IP:8090/tv.html`.
+  **Todavía no se probó en la TV real** — falta saber la versión de webOS
+  para confirmar que corre.
+- Todo esto ya está pusheado a `origin/main`.
 
 ---
 
-## Lo que falta
+## Lo que sigue: publicarlo sin VPS
 
-**1. Las fotos reales.** Hoy hay marcadores `.svg` que dicen «reemplaza esta
-foto». Van en `frontend/public/contenido/fotos/` y se apuntan desde
-`frontend/public/contenido/mural.json`. Formatos y proporciones
-recomendadas, en el README.
+La idea es un hosting estático (Netlify / Cloudflare Pages / Vercel, a
+decidir) para tener el mural en una URL pública sin pagar servidor. El plan
+que quedó conversado:
 
-Al reemplazarlas, cambia también las extensiones en el JSON: los marcadores
-son `.svg` y las fotos reales serán `.jpg`.
+- El **código** sigue en GitHub tal cual (público, sin fotos).
+- El **deploy** se sube directo desde la máquina local con el CLI del
+  hosting elegido (`netlify deploy --dir=frontend/dist/mural/browser`, o
+  equivalente), **sin pasar por git** — así las fotos llegan al sitio
+  publicado sin quedar nunca en el historial público del repo.
 
-**2. Escanear el QR desde el televisor de verdad.** La decodificación
-demuestra que el código es correcto; no demuestra que se pueda leer a tres
-metros con el reflejo de la sala. Eso solo se sabe probándolo.
+Falta decidir cuál de los tres (Netlify es la sugerencia por defecto) y
+armar el deploy.
 
-**3. Ajustar la zona segura al televisor concreto.** `--zona-segura` en
-`frontend/src/styles.scss`, hoy en 2,5%. Súbelo si el televisor recorta los
-bordes, bájalo si sobra marco negro.
+---
 
-**4. Confirmar las cifras.** «1.415 votos» y «Puesto 2 en Chile» se tomaron
-de una captura de pantalla y cambian solos con el tiempo. Están en el JSON.
+## Pendiente de antes, todavía vigente
+
+**Escanear el QR desde la TV real.** La URL codificada se verificó a mano
+byte a byte contra lo que pinta el `<path>` del SVG — coincide. Lo que no
+está probado es leerlo con un teléfono a tres metros, con el reflejo de la
+sala. `llamado.url` en `mural.json`.
+
+**Zona segura del overscan.** `--zona-segura` en
+`frontend/src/styles.scss`, hoy en 2,5%. Ajustar mirando la TV real: subir
+si recorta bordes, bajar si sobra marco negro.
+
+**Cifras de `datos` en `mural.json`** («votos», «Puesto N en Chile») están
+puestas a mano y quedan viejas solas. Hay una conversación aparte, ya
+resuelta, sobre leerlas por scraping del sitio de OCEANMAN (es legal y
+técnicamente simple — el HTML ya trae los números, `robots.txt` lo permite,
+y los términos del concurso no lo prohíben) — todavía no implementado.
 
 ---
 
 ## Decisiones que conviene no deshacer sin leer el porqué
 
-Las tres están argumentadas en el README y en comentarios del código. En
-resumen, por si aparece la tentación:
-
-- **Tailwind 3.4 y no 4.** La v4 pide Chromium 111+; los televisores
-  recientes andan entre Chromium 94 y 116. Es la única diferencia deliberada
-  respecto de `evaluacion-persona-frontend`.
-- **Sin Bootstrap**, aunque se había pedido: su reset pelea con el preflight
-  de Tailwind y para una vista única no aporta componentes, solo peso.
-- **El QR se genera en el navegador**, no con una API: el televisor puede
-  estar sin salida a internet.
-- **El contenido se relee cada minuto** desde el JSON. Es lo que permite
-  cambiar un texto sin ir a buscar el control remoto del televisor.
+- **Tailwind 3.4 y no 4.** La v4 pide Chromium 111+; los televisores reales
+  andan bastante por debajo.
+- **Sin Bootstrap**: su reset pelea con el preflight de Tailwind y para una
+  vista única no aporta nada, solo peso.
+- **El QR se genera en el navegador**, no con una API: la TV puede estar
+  sin salida a internet. Por lo mismo `tv.html` vendoriza la librería en vez
+  de pedirla a un CDN.
+- **El contenido se relee cada minuto** desde `mural.json` (en la app y en
+  `tv.html`). Cambiás un texto o una foto y la pantalla se actualiza sola,
+  sin ir a buscar el control remoto.
+- **Las fotos NO van en git.** Ver arriba. No es un descuido si en un clon
+  nuevo faltan: hay que traerlas aparte.
 
 ---
 
-## Detalle del entorno que puede morder
+## Detalle de entorno que puede morder
 
-El contenedor de desarrollo corre como el usuario `node`, que es uid 1000
-en la imagen de Alpine. En la máquina original el usuario también era uid
-1000 y por eso el bind mount se podía escribir. **Si en la máquina nueva tu
-uid no es 1000**, `npm install` va a fallar por permisos dentro de
-`/app/node_modules`. Se arregla pasando el uid en `docker-compose.yml`.
-
-Compruébalo con `id -u`.
+El contenedor de desarrollo corre como el usuario `node` (uid 1000 en la
+imagen Alpine). Si en la máquina nueva tu uid no es 1000, `npm install` va
+a fallar por permisos dentro de `/app/node_modules`. Se arregla pasando el
+uid en `docker-compose.yml`. Comprobalo con `id -u`.
